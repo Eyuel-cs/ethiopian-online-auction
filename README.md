@@ -87,48 +87,48 @@ online-auction-platform/
 ## ✨ Features
 
 ### 👥 User Features
-- ✅ User registration & authentication (JWT)
-- ✅ Email verification
-- ✅ Profile management with photo upload
-- ✅ Wallet system with balance management
-- ✅ Real-time auction bidding
-- ✅ Auto-bid functionality
-- ✅ Watchlist
-- ✅ Bid history tracking
-- ✅ Dispute resolution system
-- ✅ Report auctions/sellers
-- ✅ Multi-language support (English/Amharic)
-- ✅ AI Virtual Assistant (24/7 help)
+-  User registration & authentication (JWT)
+-  Email verification
+-  Profile management with photo upload
+-  Wallet system with balance management
+-  Real-time auction bidding
+- Auto-bid functionality
+-  Watchlist
+-  Bid history tracking
+-  Dispute resolution system
+-  Report auctions/sellers
+-  Multi-language support (English/Amharic)
+-  AI Virtual Assistant (24/7 help)
 
 ### 🏪 Seller Features
-- ✅ Seller verification & approval
-- ✅ Create and manage auctions
-- ✅ Upload multiple images
-- ✅ Set starting bid & buy-now price
-- ✅ Subscription plans (Free/Premium/Enterprise)
-- ✅ Sales analytics
-- ✅ Transaction history
+-  Seller verification & approval
+-  Create and manage auctions
+-  Upload multiple images
+-  Set starting bid & buy-now price
+-  Subscription plans (Free/Premium/Enterprise)
+-  Sales analytics
+-  Transaction history
 
 ### 💰 Payment & Escrow
-- ✅ Wallet-based payments
-- ✅ Blockchain escrow integration
-- ✅ Secure fund holding
-- ✅ Shipping confirmation
-- ✅ Admin-verified fund release
-- ✅ Transaction tracking
+-  Wallet-based payments
+-  Blockchain escrow integration
+-  Secure fund holding
+-  Shipping confirmation
+-  Admin-verified fund release
+-  Transaction tracking
 
 ### 👑 Admin Features
-- ✅ Comprehensive dashboard
-- ✅ User management (verify, suspend, blacklist)
-- ✅ Auction management
-- ✅ Dispute resolution
-- ✅ Report review system
-- ✅ Transaction monitoring
-- ✅ Seller application approval
-- ✅ Fraud detection
-- ✅ Activity logging
-- ✅ Export reports (CSV/JSON)
-- ✅ Real-time statistics
+-  Comprehensive dashboard
+-  User management (verify, suspend, blacklist)
+-  Auction management
+-  Dispute resolution
+-  Report review system
+-  Transaction monitoring
+-  Seller application approval
+-  Fraud detection
+-  Activity logging
+-  Export reports (CSV/JSON)
+-  Real-time statistics
 
 ---
 
@@ -379,5 +379,6 @@ Developed for online auction platform requirements.
 **Last Updated:** March 9, 2026  
 **Version:** 1.0.0  
 **Status:** ✅ Production Ready
-#   e t h i o p i a n - o n l i n e - a u c t i o n  
+#   e t h i o p i a n - o n l i n e - a u c t i o n 
+ 
  
