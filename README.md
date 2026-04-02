@@ -52,37 +52,9 @@ Frontend runs on: **http://localhost:3000**
 - Email: `admin@auction.et`
 - Password: (set during database setup)
 
----
 
-## 📁 Project Structure
 
-```
-online-auction-platform/
-├── backend/                    # Node.js + Express API
-│   ├── src/
-│   │   ├── controllers/       # Business logic
-│   │   ├── routes/            # API endpoints
-│   │   ├── middleware/        # Auth, logging
-│   │   ├── services/          # External services
-│   │   └── config/            # Database config
-│   └── *.sql                  # Database scripts
-│
-├── online-auction-b/          # Next.js Frontend
-│   ├── app/                   # Pages (App Router)
-│   ├── components/            # React components
-│   ├── contexts/              # React contexts
-│   ├── lib/                   # Utilities & API
-│   └── public/                # Static assets
-│
-└── Documentation/
-    ├── README.md              # This file
-    ├── PROJECT-STRUCTURE.md   # Detailed structure
-    ├── DATABASE-SETUP-COMPLETE.md
-    ├── SERVER-START-GUIDE.md
-    └── FEATURE-IMPLEMENTATION-PLAN.md
-```
 
----
 
 ## ✨ Features
 
