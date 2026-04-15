@@ -108,13 +108,18 @@ const createEscrow = async (req, res) => {
 
     // Create notifications
     await client.query(
-      `INSERT INTO notifications (user_id, type, title, message, related_auction_id)
+      `INSERT INTO notifications (user_id, type, title, message, related_auction_id, link)
        VALUES 
-       ($1, 'escrow_created', 'Payment in Escrow', 
-        'Your payment is now secured in blockchain escrow', $2),
-       ($3, 'auction_won', 'Your Item Sold!', 
-        'Buyer payment is in escrow. Ship the item to receive payment', $2)`,
-      [userId, auctionId, auction.seller_id]
+       ($1, 'escrow_created', 'Payment secured in escrow 🔒',
+        'Your payment of ETB ' || $5 || ' for "' || $6 || '" is now secured in escrow. The seller has been notified to ship your item.',
+        $2, $7),
+       ($3, 'auction_sold', 'Your item sold! Ship it now 📦',
+        'Great news! Your auction "' || $6 || '" sold for ETB ' || $5 || '. Payment is in escrow — ship the item and provide tracking to receive your funds.',
+        $2, $7)`,
+      [userId, auctionId, auction.seller_id, escrowId,
+       parseFloat(auction.winning_amount).toLocaleString(),
+       auction.title,
+       `/auction/${auctionId}`]
     );
 
     await client.query('COMMIT');
@@ -205,17 +210,16 @@ const provideShippingId = async (req, res) => {
     if (adminResult.rows.length > 0) {
       await client.query(
         `INSERT INTO notifications (user_id, type, title, message)
-         VALUES ($1, 'verify_shipping', 'Verify Shipping ID', 
-         'Buyer provided shipping ID: ${shippingId}. Please verify and release funds.')`,
-        [adminResult.rows[0].id]
+         VALUES ($1, 'verify_shipping', 'Verify Shipping ID', $2)`,
+        [adminResult.rows[0].id, `Buyer provided shipping ID: ${shippingId}. Please verify and release funds.`]
       );
     }
 
     // Notify buyer
     await client.query(
       `INSERT INTO notifications (user_id, type, title, message)
-       VALUES ($1, 'shipping_submitted', 'Shipping ID Submitted', 
-       'Your shipping ID has been submitted. Admin will verify and release funds to seller.')`,
+       VALUES ($1, 'shipping_submitted', 'Shipping ID submitted ✅',
+       'Your shipping ID has been submitted for verification. Our admin will verify delivery and release funds to the seller within 24 hours.')`,
       [userId]
     );
 
@@ -322,9 +326,14 @@ const verifyAndReleaseFunds = async (req, res) => {
     await client.query(
       `INSERT INTO notifications (user_id, type, title, message)
        VALUES 
-       ($1, 'funds_released', 'Payment Received', $3),
-       ($2, 'delivery_confirmed', 'Delivery Confirmed', 'Admin verified delivery. Funds released to seller.')`,
-      [escrow.seller_id, escrow.buyer_id, `ETB ${sellerAmount.toLocaleString()} has been released to your wallet. Your auction sale is complete!`]
+       ($1, 'funds_released', 'Payment received! 💰', $3),
+       ($2, 'delivery_confirmed', 'Delivery confirmed ✅',
+        'Your delivery has been verified by our admin. Funds have been released to the seller. Thank you for using AuctionET!')`,
+      [
+        escrow.seller_id,
+        escrow.buyer_id,
+        `ETB ${sellerAmount.toLocaleString()} has been released to your wallet! Your auction sale is complete. (Commission deducted: ETB ${commissionAmount.toLocaleString()})`
+      ]
     );
 
     await client.query('COMMIT');
@@ -415,9 +424,8 @@ const openDispute = async (req, res) => {
     if (adminResult.rows.length > 0) {
       await client.query(
         `INSERT INTO notifications (user_id, type, title, message)
-         VALUES ($1, 'dispute_opened', 'New Dispute', 
-         'A dispute has been opened for escrow ${escrow.escrow_id}')`,
-        [adminResult.rows[0].id]
+         VALUES ($1, 'dispute_opened', 'New Dispute', $2)`,
+        [adminResult.rows[0].id, `A dispute has been opened for escrow ${escrow.escrow_id}`]
       );
     }
 

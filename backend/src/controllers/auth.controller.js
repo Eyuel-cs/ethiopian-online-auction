@@ -321,9 +321,43 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// Reset Password - verify OTP and set new password
-const resetPassword = async (req, res) => {
+// Refresh access token using refresh token
+const refreshToken = async (req, res) => {
   try {
+    const { refreshToken: token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Refresh token required' });
+    }
+
+    const decoded = verifyRefreshToken(token);
+    const userId = decoded.userId;
+
+    // Verify stored refresh token matches
+    const stored = await get(`refresh_token:${userId}`);
+    if (!stored || stored !== token) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+    }
+
+    // Get user info
+    const result = await query(
+      'SELECT id, email, role, is_blacklisted FROM users WHERE id = $1',
+      [userId]
+    );
+    if (result.rows.length === 0 || result.rows[0].is_blacklisted) {
+      return res.status(401).json({ success: false, message: 'User not found or suspended' });
+    }
+
+    const user = result.rows[0];
+    const newAccessToken = generateAccessToken(user.id, user.email, user.role);
+
+    res.json({ success: true, data: { accessToken: newAccessToken } });
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+  }
+};
+
+// Reset Password - verify OTP and set new password
+const resetPassword = async (req, res) => {  try {
     const { userId, otp, newPassword } = req.body;
 
     if (!userId || !otp || !newPassword) {
@@ -365,4 +399,5 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
+  refreshToken,
 };

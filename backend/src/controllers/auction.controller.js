@@ -353,7 +353,8 @@ const deleteAuction = async (req, res) => {
       });
     }
 
-    if (auctionCheck.rows[0].seller_id !== userId) {
+    const isAdmin = req.user.role === 'admin';
+    if (!isAdmin && auctionCheck.rows[0].seller_id !== userId) {
       await client.query('ROLLBACK');
       return res.status(403).json({
         success: false,
@@ -367,15 +368,13 @@ const deleteAuction = async (req, res) => {
       [id]
     );
 
-    if (parseInt(bidsCheck.rows[0].count) > 0) {
-      // Can't delete, only cancel
+    if (parseInt(bidsCheck.rows[0].count) > 0 && !isAdmin) {
+      // Non-admin can't delete auctions with bids, only cancel
       await client.query(
         'UPDATE auctions SET status = $1 WHERE id = $2',
         ['cancelled', id]
       );
-      
       await client.query('COMMIT');
-      
       return res.json({
         success: true,
         message: 'Auction cancelled (had bids)'

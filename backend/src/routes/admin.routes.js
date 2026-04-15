@@ -21,6 +21,9 @@ const {
   addUser,
   updateThresholds,
   changeAdminPassword,
+  deleteUser,
+  updateSettings,
+  updateReport,
 } = require('../controllers/admin.controller');
 
 // All admin routes require authentication and admin role
@@ -30,6 +33,7 @@ router.use(isAdmin);
 // Users & Auctions
 router.get('/users', getAllUsers);
 router.post('/users', addUser);                          // add new user
+router.delete('/users/:userId', deleteUser);             // delete user
 router.get('/auctions', getAllAuctions);
 router.put('/users/:userId/role', changeUserRole);       // change role manually
 router.put('/users/:userId/block', toggleBlockUser);     // block / unblock
@@ -41,7 +45,8 @@ router.put('/disputes/:disputeId/resolve', resolveDispute);
 
 // Reports
 router.get('/reports', getReports);
-router.put('/reports/:reportId/review', reviewReport);
+router.put('/reports/:reportId', updateReport);          // update report status (direct)
+router.put('/reports/:reportId/review', reviewReport);   // review with admin notes
 
 // Transactions & Escrow
 router.get('/transactions', getTransactions);
@@ -59,7 +64,8 @@ router.get('/activity', getActivityLog);
 router.get('/statistics/enhanced', getEnhancedStatistics);
 
 // Settings
-router.get('/settings/thresholds', updateThresholds);   // get ML thresholds (reuse fraud route)
+router.put('/settings', updateSettings);                 // save platform settings
+router.get('/settings/thresholds', updateThresholds);   // get ML thresholds
 router.put('/settings/thresholds', updateThresholds);   // update ML thresholds
 router.put('/settings/password', changeAdminPassword);  // change admin password
 

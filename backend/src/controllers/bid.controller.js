@@ -197,19 +197,28 @@ const placeBid = async (req, res) => {
 
     // Create notification for seller
     await client.query(
-      `INSERT INTO notifications (user_id, type, title, message, related_auction_id)
-       VALUES ($1, 'new_bid', 'New Bid Received', 
-       'Someone placed a bid of ${amount} ETB on your auction', $2)`,
-      [auction.seller_id, auctionId]
+      `INSERT INTO notifications (user_id, type, title, message, related_auction_id, link)
+       VALUES ($1, 'new_bid', 'New bid on your auction 🔨', $3, $2, $4)`,
+      [
+        auction.seller_id,
+        auctionId,
+        `A new bid of ETB ${parseFloat(amount).toLocaleString()} was placed on "${auction.title}". Check your auction!`,
+        `/auction/${auctionId}`
+      ]
     );
 
     // Notify previous bidder they were outbid
     if (currentBidderResult.rows.length > 0) {
       await client.query(
-        `INSERT INTO notifications (user_id, type, title, message, related_auction_id)
-         VALUES ($1, 'outbid', 'You were outbid', 
-         'Someone placed a higher bid on the auction you were bidding on', $2)`,
-        [currentBidderResult.rows[0].bidder_id, auctionId]
+        `INSERT INTO notifications (user_id, type, title, message, related_auction_id, link)
+         VALUES ($1, 'outbid', 'You\'ve been outbid ⚠️',
+         $3, $2, $4)`,
+        [
+          currentBidderResult.rows[0].bidder_id,
+          auctionId,
+          `Someone just outbid you on "${auction.title}" with ETB ${parseFloat(amount).toLocaleString()}. Bid again to stay in the lead!`,
+          `/auction/${auctionId}`
+        ]
       );
     }
 

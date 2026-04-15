@@ -4,6 +4,14 @@ const http = require('http');
 const socketIo = require('socket.io');
 require('dotenv').config();
 
+const {
+  helmetMiddleware,
+  globalLimiter,
+  hppMiddleware,
+  sanitizeInput,
+  securityHeaders,
+} = require('./middleware/security.middleware');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -14,12 +22,20 @@ const io = socketIo(server, {
   },
 });
 
-// Middleware
+// ─── Security Middleware (applied first) ─────────────────────────────────────
+app.use(helmetMiddleware);          // HTTP security headers
+app.use(securityHeaders);           // hide X-Powered-By, add request ID
+app.use(globalLimiter);             // 100 req / 15 min per IP
+app.use(hppMiddleware);             // block HTTP parameter pollution
+app.use(sanitizeInput);             // strip null bytes & script tags
+
+// ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
 }));
-// Increase payload size limit for image uploads (50MB)
+
+// ─── Body Parsing ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 

@@ -1,124 +1,169 @@
 const { query } = require('../config/database');
 
-/**
- * AI Virtual Assistant Service
- * Provides intelligent responses to user queries about the auction platform
- */
-
 class AIAssistantService {
   constructor() {
-    // Knowledge base for the auction platform
     this.knowledgeBase = {
-      // Bidding related
+
+      // ── BIDDING ──────────────────────────────────────────────────────────────
       bidding: {
-        keywords: ['bid', 'bidding', 'place bid', 'how to bid', 'minimum bid'],
+        keywords: ['bid', 'bidding', 'place bid', 'how to bid', 'minimum bid', 'increment', 'outbid', 'winning', 'auto bid', 'autobid', 'auto-bid', 'maximum bid'],
         responses: [
-          "To place a bid: 1) Find an auction you like, 2) Enter your bid amount (must be higher than current bid), 3) Click 'Place Bid'. Your bid will be recorded immediately!",
-          "The minimum bid is always shown on the auction page. It's typically the current bid plus a minimum increment.",
-          "You can enable Auto-Bid to automatically bid up to your maximum amount when others bid against you."
+          "To place a bid:\n1. Open the auction page\n2. Enter an amount higher than the current bid (minimum +100 ETB)\n3. Click 'Place Bid'\n\nThe amount is immediately deducted from your wallet. If you're outbid, your funds are refunded instantly.",
+          "Auto-Bid lets the system bid for you automatically up to a maximum amount you set. It only bids the minimum needed to stay in the lead — so you won't overpay unnecessarily.",
+          "If you get outbid, your funds are refunded to your wallet immediately and you'll receive a notification. You can then place a higher bid if you want.",
+          "The minimum bid increment is 100 ETB above the current highest bid. You can always bid higher than the minimum.",
+          "You cannot bid on your own auction. You also need sufficient wallet balance before placing a bid — top up your wallet first if needed."
         ]
       },
-      
-      // Wallet related
+
+      // ── WALLET & PAYMENTS ────────────────────────────────────────────────────
       wallet: {
-        keywords: ['wallet', 'balance', 'add funds', 'money', 'payment', 'deposit'],
+        keywords: ['wallet', 'balance', 'add funds', 'deposit', 'top up', 'money', 'payment', 'telebirr', 'chapa', 'cbe', 'birr', 'withdraw', 'refund', 'transaction'],
         responses: [
-          "To add funds to your wallet: Go to Dashboard → Wallet tab → Click 'Add Funds' → Enter amount → Choose payment method (Chapa, Telebirr, or CBE Birr).",
-          "Your wallet balance is used for bidding and buying items. Funds are held securely until transactions complete.",
-          "You can view your transaction history in the Wallet tab of your dashboard."
+          "To add funds to your wallet:\n1. Go to Dashboard → Wallet tab\n2. Click 'Add Funds'\n3. Enter the amount\n4. Choose your payment method:\n   • Telebirr (1.5% fee)\n   • Chapa (2.5% fee)\n   • CBE Birr (2% fee)\n\nFunds appear in your wallet within minutes.",
+          "Your wallet balance is used for all bidding and purchases. When you place a bid, the amount is locked. If you're outbid, it's refunded instantly. When you win, it moves to escrow.",
+          "Accepted payment methods: Telebirr, Chapa, and CBE Birr. All are secure Ethiopian payment gateways.",
+          "Refunds are automatic — if you're outbid, your money returns to your wallet immediately. Dispute refunds are processed within 24-48 hours after admin review.",
+          "You can view your full transaction history in Dashboard → Wallet tab. It shows all deposits, bids, refunds, and escrow movements."
         ]
       },
-      
-      // Escrow related
+
+      // ── ESCROW ───────────────────────────────────────────────────────────────
       escrow: {
-        keywords: ['escrow', 'payment protection', 'secure payment', 'funds held'],
+        keywords: ['escrow', 'secure payment', 'funds held', 'release funds', 'payment protection', 'blockchain', 'smart contract'],
         responses: [
-          "When you win an auction, your payment goes into escrow - a secure holding account. The seller only receives payment after you confirm delivery.",
-          "Escrow protects both buyers and sellers. Buyers are protected from fraud, and sellers are guaranteed payment for delivered items.",
-          "To release escrow: Receive your item → Provide the shipping/tracking ID → Admin verifies → Funds released to seller."
+          "Escrow is a secure holding system. When you win an auction:\n1. Your payment moves to escrow (not directly to the seller)\n2. The seller ships your item\n3. You receive it and provide the tracking/shipping ID\n4. Admin verifies delivery\n5. Funds are released to the seller\n\nThis protects both buyers and sellers.",
+          "The seller only receives payment AFTER you confirm you received the item. This means you're always protected from sellers who don't ship.",
+          "To release escrow funds:\n1. Receive your item\n2. Go to the auction page or your dashboard\n3. Enter the shipping/tracking ID\n4. Admin will verify and release funds to the seller within 24 hours.",
+          "Our escrow system uses blockchain technology to record every transaction. This creates an immutable audit trail that protects both parties.",
+          "If there's a problem with your item, open a dispute BEFORE confirming delivery. Once funds are released, disputes are harder to resolve."
         ]
       },
-      
-      // Seller related
+
+      // ── WINNING AN AUCTION ───────────────────────────────────────────────────
+      winning: {
+        keywords: ['won', 'win', 'winner', 'highest bidder', 'auction ended', 'what happens when i win', 'after winning'],
+        responses: [
+          "Congratulations on winning! Here's what happens next:\n1. You receive a 'You Won!' notification\n2. Your winning bid amount moves to escrow\n3. The seller is notified to ship your item\n4. Once you receive it, confirm delivery to release payment to the seller.",
+          "After winning, go to your Dashboard → Portfolio tab to see your won auctions and manage the delivery process.",
+          "If you win but don't complete the escrow process within 48 hours, the auction may be re-listed. Make sure to act quickly after winning."
+        ]
+      },
+
+      // ── SELLER ───────────────────────────────────────────────────────────────
       seller: {
-        keywords: ['become seller', 'sell', 'create auction', 'seller account'],
+        keywords: ['become seller', 'sell', 'create auction', 'seller account', 'seller application', 'list item', 'selling', 'seller plan', 'commission'],
         responses: [
-          "To become a seller: Go to 'Become a Seller' page → Fill out the application → Upload required documents → Wait for admin approval (usually 24-48 hours).",
-          "Sellers can create auctions, set starting bids, and offer 'Buy Now' prices. You'll need a verified seller account first.",
-          "Seller subscription plans: Free (5 auctions/month), Premium (unlimited auctions + featured listings), Enterprise (priority support + analytics)."
+          "To become a seller:\n1. Go to 'Become a Seller' page\n2. Fill in your business details\n3. Upload required documents (business license, ID, tax certificate)\n4. Submit your application\n5. Wait for admin approval (24-48 hours)\n\nOnce approved, you can create auctions immediately.",
+          "Seller subscription plans:\n• Free: 5 auctions/month, 10% commission\n• Premium: Unlimited auctions, 3% commission, featured listings\n• Enterprise: Priority support, advanced analytics, custom commission\n\nYou can upgrade anytime from your dashboard.",
+          "To create an auction:\n1. Go to 'Create Auction'\n2. Add title, description, photos\n3. Set starting bid, reserve price (optional), and Buy Now price (optional)\n4. Set start and end dates\n5. Submit — your auction goes live at the scheduled time.",
+          "Commission is deducted automatically from the final sale price when escrow is released. Free plan sellers pay 10%, Premium sellers pay 3%.",
+          "You can upload up to 10 photos per auction. High-quality photos significantly increase bids. The first photo becomes the main listing image."
         ]
       },
-      
-      // Dispute related
+
+      // ── DISPUTES ─────────────────────────────────────────────────────────────
       dispute: {
-        keywords: ['dispute', 'problem', 'issue', 'complaint', 'refund', 'not received'],
+        keywords: ['dispute', 'problem', 'issue', 'complaint', 'refund', 'not received', 'damaged', 'wrong item', 'fake', 'fraud', 'scam', 'report'],
         responses: [
-          "If you have an issue with your purchase, you can open a dispute after confirming delivery. Go to the auction page → Click 'Open Dispute' → Describe the issue.",
-          "Common dispute reasons: Item not as described, item damaged, wrong item received, or item not received at all.",
-          "An admin will review your dispute within 24-48 hours and make a fair decision. You may receive a full refund, partial refund, or the seller may keep the payment."
+          "To open a dispute:\n1. Go to Dashboard → Disputes\n2. Click 'Open Dispute'\n3. Select the auction\n4. Choose the reason (item not received, not as described, damaged, etc.)\n5. Describe the issue in detail\n6. Submit\n\nAn admin will review within 24-48 hours.",
+          "Common dispute reasons we handle:\n• Item not received\n• Item not as described\n• Item arrived damaged\n• Wrong item sent\n• Seller not responding\n\nProvide photos and evidence for faster resolution.",
+          "Dispute outcomes:\n• Full refund to buyer (if seller at fault)\n• Funds released to seller (if buyer at fault)\n• Partial refund (split decision)\n\nAdmin decisions are final. The process takes 24-48 hours.",
+          "Important: Open a dispute BEFORE confirming delivery if you have concerns. Once you confirm delivery and funds are released to the seller, it's much harder to get a refund.",
+          "To report a fraudulent user or listing, go to the auction page and click 'Report'. Our team reviews all reports within 24 hours."
         ]
       },
-      
-      // Account related
+
+      // ── ACCOUNT & VERIFICATION ───────────────────────────────────────────────
       account: {
-        keywords: ['account', 'profile', 'verify', 'verification', 'email', 'password'],
+        keywords: ['account', 'profile', 'verify', 'verification', 'email', 'password', 'fayda', 'kyc', 'identity', 'register', 'sign up', 'login', 'forgot password'],
         responses: [
-          "To verify your account: Check your email for the verification link → Click the link → Your account is now verified!",
-          "Verified accounts can place bids and make purchases. Unverified accounts can only browse auctions.",
-          "To update your profile: Go to Settings → Edit your information → Upload a profile photo → Save changes."
+          "To verify your account:\n1. Check your email for the 6-digit OTP code\n2. Enter it on the verification page\n3. Your account is now active\n\nVerified accounts can bid and buy. Unverified accounts can only browse.",
+          "Fayda verification (Ethiopian National ID) is required for sellers and high-value transactions. It's a one-time process that takes about 2 minutes.",
+          "Forgot your password?\n1. Go to Login page\n2. Click 'Forgot Password'\n3. Enter your email\n4. Check your email for a reset code\n5. Enter the code and set a new password",
+          "To update your profile: Go to Settings → Edit your name, phone, or profile photo. Email changes require re-verification.",
+          "Your account can be suspended if you violate our terms: fake bids, fraudulent listings, or non-payment after winning. Contact support if you believe your suspension is an error."
         ]
       },
-      
-      // General help
-      general: {
-        keywords: ['help', 'how', 'what', 'guide', 'tutorial', 'start'],
+
+      // ── NOTIFICATIONS ────────────────────────────────────────────────────────
+      notifications: {
+        keywords: ['notification', 'alert', 'email alert', 'sms', 'notify', 'bell', 'unread'],
         responses: [
-          "Welcome to our auction platform! You can browse auctions, place bids, buy items instantly, and even become a seller. What would you like to know more about?",
-          "Here's what you can do: Browse auctions, place bids, use Auto-Bid, add funds to wallet, track your bids, and manage your profile.",
-          "Need help with something specific? Ask me about: bidding, wallet, becoming a seller, disputes, or account verification."
+          "You receive notifications for:\n• New bids on your auctions (sellers)\n• Being outbid (buyers)\n• Winning an auction\n• Escrow updates\n• Dispute status changes\n• Admin messages\n\nCheck the bell icon in the top navbar.",
+          "To manage notifications: Go to Settings → Notifications tab. You can enable/disable email and SMS alerts for each event type.",
+          "If you're not receiving email notifications, check your spam folder. Add our email to your contacts to ensure delivery."
         ]
       },
-      
-      // Auction status
-      status: {
-        keywords: ['auction status', 'when ends', 'time left', 'active', 'ended'],
-        responses: [
-          "Each auction shows a countdown timer. When it reaches zero, the auction ends and the highest bidder wins!",
-          "You can see all your active bids in your Dashboard → My Bids tab.",
-          "Auction statuses: Active (accepting bids), Ended (bidding closed), Completed (payment processed)."
-        ]
-      },
-      
-      // Shipping
+
+      // ── SHIPPING & DELIVERY ──────────────────────────────────────────────────
       shipping: {
-        keywords: ['shipping', 'delivery', 'tracking', 'receive item'],
+        keywords: ['shipping', 'delivery', 'tracking', 'receive item', 'ship', 'courier', 'address', 'location'],
         responses: [
-          "After winning an auction and paying, the seller will ship your item. You'll receive tracking information.",
-          "When you receive your item, provide the shipping/tracking ID on the auction page to confirm delivery. This releases payment to the seller.",
-          "If you don't receive your item, you can open a dispute for a refund."
+          "After winning and payment is in escrow:\n1. The seller will contact you about shipping\n2. They'll provide a tracking number\n3. Once you receive the item, go to the auction page\n4. Enter the shipping/tracking ID to confirm delivery\n5. This triggers the escrow release to the seller.",
+          "Shipping costs are set by the seller when creating the auction. Some sellers offer free shipping — check the auction details before bidding.",
+          "If your item hasn't arrived within the expected timeframe, contact the seller first. If no response within 48 hours, open a dispute.",
+          "Always inspect your item before confirming delivery. Once you confirm, funds are released to the seller and disputes become harder to resolve."
         ]
       },
-      
-      // Fees
+
+      // ── FEES & PRICING ───────────────────────────────────────────────────────
       fees: {
-        keywords: ['fee', 'cost', 'charge', 'commission', 'price'],
+        keywords: ['fee', 'cost', 'charge', 'commission', 'price', 'how much', 'free', 'subscription', 'plan'],
         responses: [
-          "Buyers: No fees! You only pay the winning bid amount.",
-          "Sellers: Free plan (5 auctions/month), Premium ($9.99/month for unlimited), Enterprise ($29.99/month with extra features).",
-          "Payment processing fees: Chapa (2.5%), Telebirr (1.5%), CBE Birr (2%)."
+          "Buyer fees: None! You only pay the winning bid amount plus any shipping cost set by the seller.",
+          "Seller fees:\n• Free plan: 10% commission on sales, 5 auctions/month\n• Premium plan: 3% commission, unlimited auctions\n• Enterprise: Custom rates, priority support\n\nCommission is deducted automatically from escrow release.",
+          "Payment processing fees (charged by the payment provider):\n• Telebirr: 1.5%\n• Chapa: 2.5%\n• CBE Birr: 2%\n\nThese are in addition to the winning bid amount."
+        ]
+      },
+
+      // ── SECURITY & FRAUD ─────────────────────────────────────────────────────
+      security: {
+        keywords: ['security', 'safe', 'fraud', 'scam', 'fake', 'shill bidding', 'trust', 'protect', 'secure', 'ml', 'ai detection'],
+        responses: [
+          "We use ML-powered fraud detection on every bid. Our system analyzes bidding patterns, user history, and behavior to detect shill bidding and fake accounts automatically.",
+          "Tips to stay safe:\n• Never share your password or OTP\n• Only pay through the platform wallet — never direct bank transfers\n• Report suspicious listings immediately\n• Check seller ratings and history before bidding",
+          "Shill bidding (fake bids to inflate prices) is strictly prohibited and detected by our AI system. Accounts caught shill bidding are permanently banned.",
+          "All payments go through our secure escrow system. We never ask for direct bank transfers or mobile money outside the platform."
+        ]
+      },
+
+      // ── CATEGORIES ───────────────────────────────────────────────────────────
+      categories: {
+        keywords: ['category', 'electronics', 'vehicles', 'jewelry', 'home', 'art', 'collectibles', 'what can i buy', 'what can i sell'],
+        responses: [
+          "Available auction categories:\n• Electronics (phones, laptops, TVs)\n• Vehicles (cars, motorcycles, trucks)\n• Jewelry & Watches\n• Home & Garden\n• Art & Collectibles\n• Fashion & Clothing\n• Real Estate\n• Agricultural Equipment\n\nBrowse by category on the Auctions page.",
+          "You can sell almost anything legal on our platform. Prohibited items include: weapons, counterfeit goods, stolen property, and items banned by Ethiopian law."
+        ]
+      },
+
+      // ── CONTACT & SUPPORT ────────────────────────────────────────────────────
+      support: {
+        keywords: ['contact', 'support', 'help', 'human', 'agent', 'phone', 'email support', 'customer service', 'talk to someone'],
+        responses: [
+          "Need to reach our support team?\n• Email: contact@ethiopianauction.com\n• Phone: +251 900 000 000\n• Location: Addis Ababa, Ethiopia\n• Hours: Monday–Friday, 8AM–6PM EAT\n\nFor urgent issues, use the dispute system in your dashboard.",
+          "For account issues, billing problems, or urgent disputes, email us at contact@ethiopianauction.com with your account email and a description of the issue. We respond within 4 hours during business hours.",
+          "I'm an AI assistant and can answer most questions instantly. For complex issues that need human review, please use the dispute system or contact our support team directly."
+        ]
+      },
+
+      // ── GENERAL ──────────────────────────────────────────────────────────────
+      general: {
+        keywords: ['help', 'what is', 'how does', 'guide', 'tutorial', 'start', 'new', 'beginner', 'explain', 'overview'],
+        responses: [
+          "Welcome to AuctionET — Ethiopia's premier online auction platform! 🇪🇹\n\nHere's what you can do:\n• 🔨 Browse and bid on auctions\n• 🏆 Win items at great prices\n• 💼 Sell your items to thousands of buyers\n• 🔒 All payments protected by escrow\n\nWhat would you like to know more about?",
+          "Quick start guide:\n1. Register and verify your account\n2. Add funds to your wallet (Telebirr, Chapa, or CBE Birr)\n3. Browse auctions and place bids\n4. Win auctions and confirm delivery\n5. Want to sell? Apply to become a seller!\n\nAsk me anything specific!",
+          "I can help you with: bidding, wallet & payments, escrow, becoming a seller, disputes, account verification, shipping, fees, and security. What do you need help with?"
         ]
       }
     };
   }
 
-  /**
-   * Process user message and generate response
-   */
   async processMessage(userId, message) {
     try {
       const lowerMessage = message.toLowerCase();
-      
-      // Find matching category
+
+      // Find best matching category
       let bestMatch = null;
       let highestScore = 0;
 
@@ -130,18 +175,14 @@ class AIAssistantService {
         }
       }
 
-      // Generate response
       let response;
       if (bestMatch && highestScore > 0) {
-        // Get a random response from the matched category
         const responses = bestMatch.data.responses;
         response = responses[Math.floor(Math.random() * responses.length)];
       } else {
-        // Default response for unmatched queries
-        response = "I'm here to help! I can answer questions about bidding, wallet, becoming a seller, disputes, account verification, and more. What would you like to know?";
+        response = "I'm not sure about that specific question. I can help with:\n• Bidding & auto-bid\n• Wallet & payments\n• Escrow & delivery\n• Becoming a seller\n• Disputes & refunds\n• Account & verification\n• Fees & pricing\n• Security & fraud\n\nTry asking something like 'How do I place a bid?' or 'What is escrow?'";
       }
 
-      // Log the conversation
       await this.logConversation(userId, message, response, bestMatch?.category || 'unknown');
 
       return {
@@ -154,45 +195,36 @@ class AIAssistantService {
       console.error('AI Assistant error:', error);
       return {
         success: false,
-        response: "I'm having trouble right now. Please try again or contact support.",
+        response: "I'm having trouble right now. Please try again or contact support at contact@ethiopianauction.com",
         error: error.message
       };
     }
   }
 
-  /**
-   * Calculate match score between message and keywords
-   */
   calculateMatchScore(message, keywords) {
     let score = 0;
     for (const keyword of keywords) {
       if (message.includes(keyword.toLowerCase())) {
-        score += keyword.split(' ').length; // Multi-word keywords get higher score
+        score += keyword.split(' ').length;
       }
     }
     return score;
   }
 
-  /**
-   * Log conversation for analytics and improvement
-   */
   async logConversation(userId, userMessage, botResponse, category) {
     try {
       await query(
         `INSERT INTO virtual_assistant_logs 
          (user_id, user_message, bot_response, category, created_at)
-         VALUES ($1, $2, $3, $4, NOW())`,
-        [userId, userMessage, botResponse, category]
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT DO NOTHING`,
+        [userId || null, userMessage, botResponse, category]
       );
     } catch (error) {
-      console.error('Failed to log conversation:', error);
-      // Don't throw - logging failure shouldn't break the assistant
+      // Don't crash on log failure
     }
   }
 
-  /**
-   * Get conversation history for a user
-   */
   async getConversationHistory(userId, limit = 10) {
     try {
       const result = await query(
@@ -203,23 +235,12 @@ class AIAssistantService {
          LIMIT $2`,
         [userId, limit]
       );
-
-      return {
-        success: true,
-        history: result.rows
-      };
+      return { success: true, history: result.rows };
     } catch (error) {
-      console.error('Failed to get conversation history:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Get popular questions (for analytics)
-   */
   async getPopularQuestions(limit = 10) {
     try {
       const result = await query(
@@ -231,51 +252,51 @@ class AIAssistantService {
          LIMIT $1`,
         [limit]
       );
-
-      return {
-        success: true,
-        questions: result.rows
-      };
+      return { success: true, questions: result.rows };
     } catch (error) {
-      console.error('Failed to get popular questions:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Get suggested questions based on context
-   */
   getSuggestedQuestions(context = 'general') {
     const suggestions = {
       general: [
         "How do I place a bid?",
         "How do I add funds to my wallet?",
-        "How do I become a seller?",
-        "What is escrow and how does it work?"
+        "What is escrow and how does it work?",
+        "How do I become a seller?"
       ],
       auction: [
-        "What's the minimum bid?",
-        "How do I enable auto-bid?",
-        "When does this auction end?",
+        "What's the minimum bid increment?",
+        "How does auto-bid work?",
+        "What happens when I win an auction?",
         "Can I cancel my bid?"
       ],
       payment: [
-        "How do I add funds?",
         "What payment methods are accepted?",
-        "Are there any fees?",
-        "How long does payment take?"
+        "How do I add funds to my wallet?",
+        "Are there any buyer fees?",
+        "How do I get a refund?"
       ],
       seller: [
+        "How do I apply to become a seller?",
+        "What are the seller commission rates?",
         "How do I create an auction?",
-        "What are the seller fees?",
-        "How do I get verified as a seller?",
-        "What subscription plans are available?"
+        "What documents do I need to sell?"
+      ],
+      dispute: [
+        "How do I open a dispute?",
+        "What happens if I don't receive my item?",
+        "How long does dispute resolution take?",
+        "Can I get a refund after confirming delivery?"
+      ],
+      security: [
+        "How does fraud detection work?",
+        "Is my payment safe?",
+        "What is shill bidding?",
+        "How do I report a scam?"
       ]
     };
-
     return suggestions[context] || suggestions.general;
   }
 }

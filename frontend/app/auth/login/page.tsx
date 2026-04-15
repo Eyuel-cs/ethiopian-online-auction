@@ -31,7 +31,16 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (error: any) {
-      setError(error.message || 'Invalid email or password');
+      const msg = error.message || '';
+      if (msg.includes('Invalid email or password')) {
+        setError('Incorrect email or password. Please check your credentials and try again.');
+      } else if (msg.includes('suspended') || msg.includes('blacklisted')) {
+        setError('Your account has been suspended. Contact support at contact@ethiopianauction.com');
+      } else if (msg.includes('connect') || msg.includes('fetch')) {
+        setError('Cannot reach the server. Please check your internet connection and try again.');
+      } else {
+        setError(msg || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

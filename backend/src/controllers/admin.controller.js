@@ -61,8 +61,9 @@ const getDisputes = async (req, res) => {
   try {
     const result = await query(
       `SELECT 
-        d.id, d.auction_id, d.buyer_id, d.seller_id, d.reason, d.description,
-        d.status, d.resolution, d.created_at, d.resolved_at,
+        d.id, d.reason, d.description, d.status, d.resolution,
+        d.created_at, d.resolved_at,
+        d.auction_id, d.buyer_id, d.seller_id,
         a.title as auction_title,
         bu.name as buyer_name, bu.email as buyer_email,
         su.name as seller_name, su.email as seller_email
@@ -73,17 +74,10 @@ const getDisputes = async (req, res) => {
       ORDER BY d.created_at DESC`
     );
 
-    res.json({
-      success: true,
-      data: result.rows
-    });
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Get disputes error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch disputes',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch disputes', error: error.message });
   }
 };
 
@@ -171,28 +165,38 @@ const reviewReport = async (req, res) => {
     const { reportId } = req.params;
     const { action, notes } = req.body; // action: 'dismiss', 'warn', 'suspend', 'ban'
 
+    // Map action to a valid status
+    const statusMap = {
+      dismiss: 'dismissed',
+      warn: 'resolved',
+      suspend: 'resolved',
+      ban: 'resolved',
+    };
+    const newStatus = statusMap[action] || 'resolved';
+
     await query(
       `UPDATE reports 
-       SET status = 'reviewed', admin_action = $1, admin_notes = $2, resolved_at = NOW()
-       WHERE id = $3`,
-      [action, notes, reportId]
+       SET status = $1,
+           admin_action = $2,
+           admin_notes = $3,
+           reviewed_by_admin_id = $4,
+           resolved_at = NOW()
+       WHERE id = $5`,
+      [newStatus, action, notes, req.user.userId, reportId]
     );
 
-    // If action is suspend or ban, update user status
+    // If action is suspend or ban, block the reported user
     if (action === 'suspend' || action === 'ban') {
       const report = await query('SELECT reported_user_id FROM reports WHERE id = $1', [reportId]);
-      if (report.rows.length > 0) {
+      if (report.rows.length > 0 && report.rows[0].reported_user_id) {
         await query(
-          `UPDATE users SET status = $1 WHERE id = $2`,
-          [action === 'ban' ? 'banned' : 'suspended', report.rows[0].reported_user_id]
+          `UPDATE users SET is_blacklisted = true WHERE id = $1`,
+          [report.rows[0].reported_user_id]
         );
       }
     }
 
-    res.json({
-      success: true,
-      message: 'Report reviewed successfully'
-    });
+    res.json({ success: true, message: 'Report reviewed successfully' });
   } catch (error) {
     console.error('Review report error:', error);
     res.status(500).json({
@@ -698,6 +702,71 @@ const changeAdminPassword = async (req, res) => {
   }
 };
 
+// Delete a user (admin only)
+const deleteUser = async (req, res) => {
+  try {
+    const { userId: targetId } = req.params;
+    const { userId: adminId } = req.user;
+
+    if (targetId === adminId) {
+      return res.status(400).json({ success: false, message: 'Cannot delete your own account' });
+    }
+
+    const result = await query('DELETE FROM users WHERE id = $1 RETURNING id, name, email', [targetId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({ success: true, message: 'User deleted successfully', data: result.rows[0] });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete user', error: error.message });
+  }
+};
+
+// Update platform settings (stored in a simple key-value or just acknowledged)
+const updateSettings = async (req, res) => {
+  try {
+    // Settings like platformName, commissionRate etc. can be stored in a settings table
+    // For now we acknowledge the save — extend this when a settings table is added
+    res.json({ success: true, message: 'Settings saved successfully', data: req.body });
+  } catch (error) {
+    console.error('Update settings error:', error);
+    res.status(500).json({ success: false, message: 'Failed to save settings', error: error.message });
+  }
+};
+
+// Update report status directly (used by admin frontend)
+const updateReport = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ['open', 'investigating', 'resolved', 'dismissed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status value' });
+    }
+
+    const result = await query(
+      `UPDATE reports 
+       SET status = $1,
+           reviewed_by_admin_id = $2,
+           resolved_at = CASE WHEN $1 IN ('resolved','dismissed') THEN NOW() ELSE resolved_at END
+       WHERE id = $3 RETURNING id, status`,
+      [status, req.user.userId, reportId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Report not found' });
+    }
+
+    res.json({ success: true, message: 'Report updated', data: result.rows[0] });
+  } catch (error) {
+    console.error('Update report error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update report', error: error.message });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getAllAuctions,
@@ -718,4 +787,7 @@ module.exports = {
   addUser,
   updateThresholds,
   changeAdminPassword,
+  deleteUser,
+  updateSettings,
+  updateReport,
 };

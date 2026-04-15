@@ -93,9 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(loggedInUser);
         localStorage.setItem('user', JSON.stringify(loggedInUser));
         localStorage.setItem('token', token);
+        if (response.data.refreshToken) {
+          localStorage.setItem('refreshToken', response.data.refreshToken);
+        }
       }
     } catch (error: any) {
-      console.error('Login error:', error);
+      // Re-throw with clean message — the login page handles display
       throw new Error(error.message || 'Login failed');
     }
   };
@@ -194,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
+
       const response = await api.getProfile();
       if (response.success && response.data) {
         const userData = (response.data as any)?.user || response.data;
@@ -214,8 +218,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(updated);
         localStorage.setItem('user', JSON.stringify(updated));
       }
-    } catch (e) {
-      console.error('refreshUser error:', e);
+    } catch (e: any) {
+      const isExpired = e?.message?.toLowerCase().includes('expired');
+      const isInvalid = e?.message?.toLowerCase().includes('invalid token');
+
+      if (isExpired) {
+        // Try to silently renew using refresh token
+        const refreshTokenVal = localStorage.getItem('refreshToken');
+        if (refreshTokenVal) {
+          try {
+            const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const res = await fetch(`${BASE}/auth/refresh`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken: refreshTokenVal }),
+            });
+            const json = await res.json();
+            if (json.success && json.data?.accessToken) {
+              localStorage.setItem('token', json.data.accessToken);
+              // Retry profile fetch with new token
+              await refreshUser();
+              return;
+            }
+          } catch {}
+        }
+        // Refresh token also failed — log out cleanly
+        setUser(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('pendingUser');
+        setPendingUser(null);
+      } else if (isInvalid) {
+        setUser(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('pendingUser');
+        setPendingUser(null);
+      }
     }
   };
 
@@ -223,6 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('pendingUser');
     setPendingUser(null);
   };

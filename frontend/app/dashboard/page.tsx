@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import Navbar from '@/components/Navbar';
 import NotificationBell from '@/components/NotificationBell';
 import Link from 'next/link';
@@ -10,6 +11,7 @@ import Image from 'next/image';
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showAddFundsModal, setShowAddFundsModal] = useState(false);
@@ -503,14 +505,14 @@ export default function DashboardPage() {
 
   // Sidebar navigation
   const sidebarItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊', action: () => setActiveTab('dashboard') },
-    { id: 'marketplace', label: 'Marketplace', icon: '🏪', action: () => router.push('/auctions') },
-    { id: 'wallet', label: 'My Wallet', icon: '💼', action: () => setActiveTab('wallet') },
-    { id: 'portfolio', label: 'My Portfolio', icon: '📁', action: () => setActiveTab('portfolio') },
-    { id: 'history', label: 'History', icon: '📜', action: () => setActiveTab('history') },
-    { id: 'preferences', label: 'Buyer Preferences', icon: '🛍️', action: () => setActiveTab('preferences') },
-    ...(isSeller ? [{ id: 'seller-settings', label: 'Seller Settings', icon: '🏪', action: () => setActiveTab('seller-settings') }] : []),
-    { id: 'settings', label: 'Settings', icon: '⚙️', action: () => router.push('/settings') },
+    { id: 'dashboard', label: t('dashboard'), icon: '📊', action: () => setActiveTab('dashboard') },
+    { id: 'marketplace', label: t('marketplace'), icon: '🏪', action: () => router.push('/auctions') },
+    { id: 'wallet', label: t('myWallet'), icon: '💼', action: () => setActiveTab('wallet') },
+    { id: 'portfolio', label: t('myPortfolio'), icon: '📁', action: () => setActiveTab('portfolio') },
+    { id: 'history', label: t('bidHistory2'), icon: '📜', action: () => setActiveTab('history') },
+    { id: 'preferences', label: t('settings'), icon: '🛍️', action: () => setActiveTab('preferences') },
+    ...(isSeller ? [{ id: 'seller-settings', label: t('myAuctions'), icon: '🏪', action: () => setActiveTab('seller-settings') }] : []),
+    { id: 'settings', label: t('settings'), icon: '⚙️', action: () => router.push('/settings') },
   ];
 
   return (
@@ -518,8 +520,8 @@ export default function DashboardPage() {
       <Navbar />
       
       <div className="flex">
-        {/* Left Sidebar */}
-        <aside className="w-20 bg-white min-h-screen fixed left-0 top-16 z-40 border-r border-gray-200 shadow-sm">
+        {/* Left Sidebar — hidden on mobile */}
+        <aside className="hidden md:flex w-20 bg-white min-h-screen fixed left-0 top-16 z-40 border-r border-gray-200 shadow-sm">
           <div className="flex flex-col items-center py-6 space-y-6">
             {/* Logo */}
             <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-cyan-500/30">
@@ -571,7 +573,7 @@ export default function DashboardPage() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 ml-20 mr-80 p-8">
+        <main className="flex-1 ml-0 md:ml-20 mr-0 lg:mr-80 p-4 sm:p-6 lg:p-8">
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <>
@@ -1394,8 +1396,8 @@ export default function DashboardPage() {
           )}
         </main>
 
-        {/* Right Sidebar - Recently Added Auctions */}
-        <aside className="w-80 bg-white min-h-screen fixed right-0 top-16 z-40 border-l border-gray-200 p-6 shadow-sm">
+        {/* Right Sidebar — hidden on mobile and tablet */}
+        <aside className="hidden lg:block w-80 bg-white min-h-screen fixed right-0 top-16 z-40 border-l border-gray-200 p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
             <span className="w-1 h-6 bg-cyan-400"></span>
             Recently Added
@@ -1442,6 +1444,25 @@ export default function DashboardPage() {
           </div>
         </aside>
       </div>
+
+      {/* Mobile bottom navigation — visible only on small screens */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex justify-around items-center h-16 px-2 shadow-lg">
+        {sidebarItems.slice(0, 5).map((item) => (
+          <button
+            key={item.id}
+            onClick={item.action}
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition ${
+              activeTab === item.id ? 'text-blue-600' : 'text-gray-400'
+            }`}
+          >
+            <span className="text-xl">{item.icon}</span>
+            <span className="text-[10px] font-medium leading-none">{item.label.split(' ')[0]}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* Spacer so content isn't hidden behind mobile nav */}
+      <div className="md:hidden h-16" />
     </div>
   );
 }

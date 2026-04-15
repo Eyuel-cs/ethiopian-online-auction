@@ -24,15 +24,20 @@ export default function NotificationBell() {
 
   // Fetch notifications from API
   useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     const fetchNotifications = async () => {
       try {
         const api = (await import('@/lib/api')).default;
         const response = await api.getNotifications();
         
         if (response.success && response.data) {
-          const notifs = Array.isArray(response.data) ? response.data : (response.data.notifications || []);
+          const notifs = Array.isArray(response.data) ? response.data : ((response.data as any).notifications || []);
           
-          // Transform to match the Notification interface
           const transformed = notifs.map((n: any) => ({
             id: n.id,
             type: n.type || 'message',
@@ -45,8 +50,8 @@ export default function NotificationBell() {
           
           setNotifications(transformed);
         }
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
+      } catch {
+        // Silently fail — bell just shows empty, no crash
       } finally {
         setLoading(false);
       }
@@ -54,7 +59,7 @@ export default function NotificationBell() {
 
     fetchNotifications();
     
-    // Refresh notifications every 30 seconds
+    // Refresh every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);

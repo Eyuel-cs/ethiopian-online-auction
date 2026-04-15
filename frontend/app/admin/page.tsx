@@ -200,14 +200,28 @@ export default function AdminPage() {
     );
   };
 
-  const handleDeleteClient = (clientId: number) => {
-    if (confirm('Are you sure you want to delete this client?')) {
-      alert(`Client ${clientId} deleted`);
+  const handleDeleteClient = async (clientId: number) => {
+    if (!confirm('Are you sure you want to delete this client? This cannot be undone.')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${BASE}/admin/users/${clientId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (json.success) {
+        setRealUsers(prev => prev.filter((u: any) => u.id !== clientId));
+      } else {
+        alert('Failed to delete user: ' + (json.message || 'Unknown error'));
+      }
+    } catch (e: any) {
+      alert('Error deleting user: ' + e.message);
     }
   };
 
-  const handleVerifyClient = (clientId: number) => {
-    alert(`Client ${clientId} verified`);
+  const handleVerifyClient = async (clientId: number) => {
+    await handleVerifyUser(clientId, false);
   };
 
   const handleAddClient = async (e: React.FormEvent) => {
@@ -275,12 +289,109 @@ export default function AdminPage() {
     } catch { alert('Failed to change role'); }
   };
 
-  const handleResolveDispute = (disputeId: number, resolution: string) => {
-    alert(`Dispute ${disputeId} resolved: ${resolution}`);
+  const handleResolveDispute = async (disputeId: number, resolution: string) => {
+    const winnerMap: Record<string, string> = {
+      'favor-buyer': 'buyer',
+      'favor-seller': 'seller',
+      'partial-refund': 'buyer',
+    };
+    const winner = winnerMap[resolution] || resolution;
+    const label = resolution === 'favor-buyer' ? 'Favor Buyer (refund buyer)' :
+                  resolution === 'favor-seller' ? 'Favor Seller (release funds to seller)' :
+                  'Partial Refund';
+    if (!confirm(`Resolve dispute: ${label}?`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${BASE}/admin/disputes/${disputeId}/resolve`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolution: label, winner })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setRealDisputes(prev => prev.map((d: any) =>
+          d.id === disputeId ? { ...d, status: 'resolved', resolution: label } : d
+        ));
+      } else {
+        alert('Failed to resolve dispute: ' + (json.message || 'Unknown error'));
+      }
+    } catch (e: any) {
+      alert('Error resolving dispute: ' + e.message);
+    }
   };
 
-  const handleReviewIssue = (issueId: number, action: string) => {
-    alert(`Issue ${issueId} - Action: ${action}`);
+  const handleReviewIssue = async (issueId: number, action: string) => {
+    const actionLabels: Record<string, string> = {
+      investigate: 'Mark as Investigating',
+      'warn-user': 'Warn the reported user',
+      dismiss: 'Dismiss this report',
+    };
+    if (!confirm(`${actionLabels[action] || action}?`)) return;
+
+    const token = localStorage.getItem('token');
+    const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+    try {
+      if (action === 'investigate') {
+        // Mark report as investigating
+        const res = await fetch(`${BASE}/admin/reports/${issueId}`, {
+          method: 'PUT', headers,
+          body: JSON.stringify({ status: 'investigating' })
+        });
+        const json = await res.json();
+        if (json.success) {
+          setRealReports(prev => prev.map((r: any) =>
+            r.id === issueId ? { ...r, status: 'investigating' } : r
+          ));
+        } else {
+          alert('Failed: ' + (json.message || 'Unknown error'));
+        }
+
+      } else if (action === 'warn-user') {
+        // Warn user via reviewReport endpoint + block them
+        const report = realReports.find((r: any) => r.id === issueId);
+        const notes = prompt('Enter warning message for the user (optional):') || 'Your account has received a warning due to a report.';
+
+        const res = await fetch(`${BASE}/admin/reports/${issueId}/review`, {
+          method: 'PUT', headers,
+          body: JSON.stringify({ action: 'warn', notes })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          // Also blacklist the reported user if they exist
+          if (report?.reported_user_id) {
+            await fetch(`${BASE}/admin/users/${report.reported_user_id}/block`, {
+              method: 'PUT', headers
+            });
+          }
+          setRealReports(prev => prev.map((r: any) =>
+            r.id === issueId ? { ...r, status: 'reviewed', admin_action: 'warn' } : r
+          ));
+          alert('✅ User warned and temporarily blocked.');
+        } else {
+          alert('Failed: ' + (json.message || 'Unknown error'));
+        }
+
+      } else if (action === 'dismiss') {
+        const res = await fetch(`${BASE}/admin/reports/${issueId}/review`, {
+          method: 'PUT', headers,
+          body: JSON.stringify({ action: 'dismiss', notes: 'Report dismissed by admin.' })
+        });
+        const json = await res.json();
+        if (json.success) {
+          setRealReports(prev => prev.map((r: any) =>
+            r.id === issueId ? { ...r, status: 'dismissed' } : r
+          ));
+        } else {
+          alert('Failed: ' + (json.message || 'Unknown error'));
+        }
+      }
+    } catch (e: any) {
+      alert('Error: ' + e.message);
+    }
   };
 
   const handleReleaseEscrow = async (transactionId: number) => {
@@ -327,33 +438,78 @@ export default function AdminPage() {
     alert(`Shipping ID Verification\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nShipping ID: ${transaction.shippingId}\nBuyer: ${transaction.buyer}\nSeller: ${transaction.seller}\nAuction: ${transaction.auction}\nAmount: ETB ${transaction.amount.toLocaleString()}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nThe buyer has confirmed receiving the item by providing this shipping/tracking ID.\n\nPlease verify this tracking number with the courier service to confirm delivery before releasing funds.`);
   };
 
-  const handleApproveSeller = (sellerId: number) => {
-    if (confirm('Approve this seller application?')) {
-      alert(`Seller ${sellerId} approved`);
+  const handleApproveSeller = async (sellerId: number) => {
+    if (!confirm('Approve this seller application?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${BASE}/admin/seller-applications/${sellerId}/approve`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      const json = await res.json();
+      if (json.success) {
+        setRealSellers(prev => prev.map((s: any) =>
+          s.id === sellerId ? { ...s, status: 'approved' } : s
+        ));
+      } else {
+        alert('Failed to approve: ' + (json.message || 'Unknown error'));
+      }
+    } catch (e: any) {
+      alert('Error approving seller: ' + e.message);
     }
   };
 
-  const handleRejectSeller = (sellerId: number) => {
-    if (confirm('Reject this seller application?')) {
-      alert(`Seller ${sellerId} rejected`);
+  const handleRejectSeller = async (sellerId: number) => {
+    const reason = prompt('Enter rejection reason:');
+    if (!reason) return;
+    try {
+      const token = localStorage.getItem('token');
+      const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${BASE}/admin/seller-applications/${sellerId}/reject`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setRealSellers(prev => prev.map((s: any) =>
+          s.id === sellerId ? { ...s, status: 'rejected', rejection_reason: reason } : s
+        ));
+      } else {
+        alert('Failed to reject: ' + (json.message || 'Unknown error'));
+      }
+    } catch (e: any) {
+      alert('Error rejecting seller: ' + e.message);
     }
   };
 
   const handleViewAuction = (auctionId: number, auctionTitle: string) => {
-    alert(`Viewing auction details:\n\nID: ${auctionId}\nTitle: ${auctionTitle}\n\nThis would open a detailed view of the auction.`);
-    // In production, this would navigate to: router.push(`/auction/${auctionId}`)
+    router.push(`/auction/${auctionId}`);
   };
 
-  const handleDeleteAuction = (auctionId: number, auctionTitle: string) => {
-    if (confirm(`Are you sure you want to delete the auction "${auctionTitle}"?\n\nThis action cannot be undone.`)) {
-      alert(`Auction "${auctionTitle}" has been deleted successfully.`);
-      // In production, this would call an API to delete the auction
+  const handleDeleteAuction = async (auctionId: number, auctionTitle: string) => {
+    if (!confirm(`Delete auction "${auctionTitle}"? This cannot be undone.`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${BASE}/auctions/${auctionId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (json.success) {
+        setRealAuctions(prev => prev.filter((a: any) => a.id !== auctionId));
+      } else {
+        alert('Failed to delete auction: ' + (json.message || 'Unknown error'));
+      }
+    } catch (e: any) {
+      alert('Error deleting auction: ' + e.message);
     }
   };
 
   const handleCreateAuction = () => {
-    alert('Opening auction creation form...\n\nThis would redirect to the auction creation page.');
-    // In production: router.push('/create-auction')
+    router.push('/create-auction');
   };
 
   // Settings state
@@ -383,10 +539,26 @@ export default function AdminPage() {
   const handleSaveSettings = async () => {
     setSettingsSaving(true);
     setSettingsMsg('');
-    await new Promise(r => setTimeout(r, 800));
-    setSettingsMsg('✅ Settings saved successfully!');
-    setSettingsSaving(false);
-    setTimeout(() => setSettingsMsg(''), 3000);
+    try {
+      const token = localStorage.getItem('token');
+      const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${BASE}/admin/settings`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(platformSettings)
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSettingsMsg('✅ Settings saved successfully!');
+      } else {
+        setSettingsMsg('❌ ' + (json.message || 'Failed to save settings'));
+      }
+    } catch (e: any) {
+      setSettingsMsg('❌ ' + e.message);
+    } finally {
+      setSettingsSaving(false);
+      setTimeout(() => setSettingsMsg(''), 3000);
+    }
   };
 
   const handleSaveThresholds = async () => {
@@ -1368,43 +1540,52 @@ export default function AdminPage() {
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">Dispute Resolution</h1>
-                  <p className="text-gray-600 mt-1">{realDisputes.filter((d: any) => d.status === 'pending').length} pending disputes</p>
+                  <p className="text-gray-600 mt-1">{realDisputes.filter((d: any) => d.status === 'pending' || d.status === 'open').length} pending disputes</p>
                 </div>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <div className="p-6">
                   <div className="space-y-4">
-                    {realDisputes.map((dispute: any) => (
+                    {realDisputes.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500">
+                        <div className="text-5xl mb-3">⚖️</div>
+                        <p className="font-medium">No disputes found</p>
+                        <p className="text-sm mt-1">All disputes will appear here</p>
+                      </div>
+                    ) : realDisputes.map((dispute: any) => (
                       <div key={dispute.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-bold text-gray-900">{dispute.auctionTitle}</h3>
+                              <h3 className="font-bold text-gray-900">
+                                {dispute.auction_title || dispute.auctionTitle || 'Auction #' + dispute.auction_id}
+                              </h3>
                               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                dispute.priority === 'high' ? 'bg-red-50 text-red-600 border border-red-200' :
-                                dispute.priority === 'medium' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
-                                'bg-gray-50 text-gray-600 border border-gray-200'
-                              }`}>
-                                {dispute.priority} priority
-                              </span>
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                dispute.status === 'pending' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
-                                dispute.status === 'in-progress' ? 'bg-blue-50 text-blue-600 border border-blue-200' :
-                                'bg-green-50 text-green-600 border border-green-200'
+                                dispute.status === 'pending' || dispute.status === 'open'
+                                  ? 'bg-orange-50 text-orange-600 border border-orange-200'
+                                  : dispute.status === 'investigating' || dispute.status === 'in-progress'
+                                  ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                                  : 'bg-green-50 text-green-600 border border-green-200'
                               }`}>
                                 {dispute.status}
                               </span>
                             </div>
                             <p className="text-sm text-gray-600 mb-2">
-                              <span className="font-medium">Buyer:</span> {dispute.buyer} | 
-                              <span className="font-medium ml-2">Seller:</span> {dispute.seller}
+                              <span className="font-medium">Buyer:</span> {dispute.buyer_name || dispute.buyer_email || dispute.buyer || '—'} |{' '}
+                              <span className="font-medium">Seller:</span> {dispute.seller_name || dispute.seller_email || dispute.seller || '—'}
                             </p>
                             <p className="text-sm text-gray-700 mb-2">
-                              <span className="font-medium">Reason:</span> {dispute.reason}
+                              <span className="font-medium">Reason:</span> {dispute.reason || dispute.description || '—'}
                             </p>
+                            {dispute.description && dispute.reason && (
+                              <p className="text-sm text-gray-600 mb-2">{dispute.description}</p>
+                            )}
                             <p className="text-sm text-gray-500">
-                              Amount: ETB {dispute.amount.toLocaleString()} | Date: {dispute.date}
+                              Date: {dispute.created_at ? new Date(dispute.created_at).toLocaleDateString() : dispute.date || '—'}
+                              {dispute.resolution && (
+                                <span className="ml-4 text-green-600 font-medium">Resolution: {dispute.resolution}</span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -1414,13 +1595,13 @@ export default function AdminPage() {
                               onClick={() => handleResolveDispute(dispute.id, 'favor-buyer')}
                               className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg text-sm font-medium hover:from-cyan-600 hover:to-blue-600 transition"
                             >
-                              Resolve - Favor Buyer
+                              Favor Buyer
                             </button>
                             <button
                               onClick={() => handleResolveDispute(dispute.id, 'favor-seller')}
                               className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition"
                             >
-                              Resolve - Favor Seller
+                              Favor Seller
                             </button>
                             <button
                               onClick={() => handleResolveDispute(dispute.id, 'partial-refund')}
@@ -1457,19 +1638,21 @@ export default function AdminPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                issue.type === 'Fraud' ? 'bg-red-50 text-red-600 border border-red-200' :
-                                issue.type === 'Spam' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+                                issue.type === 'fraud' || issue.reason === 'fraud' ? 'bg-red-50 text-red-600 border border-red-200' :
+                                issue.type === 'spam' || issue.reason === 'spam' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
                                 'bg-yellow-50 text-yellow-600 border border-yellow-200'
                               }`}>
-                                {issue.type}
+                                {issue.type || issue.reason || 'report'}
                               </span>
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                issue.severity === 'critical' ? 'bg-red-50 text-red-600 border border-red-200' :
-                                issue.severity === 'high' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
-                                'bg-gray-50 text-gray-600 border border-gray-200'
-                              }`}>
-                                {issue.severity}
-                              </span>
+                              {issue.severity && (
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                  issue.severity === 'critical' ? 'bg-red-50 text-red-600 border border-red-200' :
+                                  issue.severity === 'high' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+                                  'bg-gray-50 text-gray-600 border border-gray-200'
+                                }`}>
+                                  {issue.severity}
+                                </span>
+                              )}
                               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                 issue.status === 'open' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
                                 issue.status === 'investigating' ? 'bg-blue-50 text-blue-600 border border-blue-200' :
@@ -1479,14 +1662,14 @@ export default function AdminPage() {
                               </span>
                             </div>
                             <p className="text-sm text-gray-600 mb-2">
-                              <span className="font-medium">Reporter:</span> {issue.reporter} | 
-                              <span className="font-medium ml-2">Target:</span> {issue.target}
+                              <span className="font-medium">Reporter:</span> {issue.reporter_name || issue.reporter_email || issue.reporter || '—'} | 
+                              <span className="font-medium ml-2">Target:</span> {issue.reported_user_name || issue.reported_user_email || issue.target || '—'}
                             </p>
-                            <p className="text-sm text-gray-700 mb-2">{issue.description}</p>
-                            <p className="text-sm text-gray-500">Date: {issue.date}</p>
+                            <p className="text-sm text-gray-700 mb-2">{issue.description || issue.reason || '—'}</p>
+                            <p className="text-sm text-gray-500">Date: {issue.created_at ? new Date(issue.created_at).toLocaleDateString() : issue.date || '—'}</p>
                           </div>
                         </div>
-                        {issue.status !== 'resolved' && (
+                        {!['resolved', 'dismissed', 'reviewed'].includes(issue.status) && (
                           <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
                             <button
                               onClick={() => handleReviewIssue(issue.id, 'investigate')}

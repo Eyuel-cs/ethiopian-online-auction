@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 
@@ -19,6 +20,7 @@ interface Notification {
 
 export default function NotificationsPage() {
   const { user, isAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -112,7 +114,8 @@ export default function NotificationsPage() {
 
   const deleteNotification = async (id: string) => {
     try {
-      // Note: You'll need to add a delete endpoint in the backend
+      const api = (await import('@/lib/api')).default;
+      await api.deleteNotification(id);
       setNotifications(prev => prev.filter(n => n.id !== id));
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -152,9 +155,9 @@ export default function NotificationsPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t('notifications')}</h1>
           <p className="text-gray-600 mt-1">
-            {unreadCount > 0 ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
+            {unreadCount > 0 ? `${unreadCount} ${t('unread')}` : t('allCaughtUp')}
           </p>
         </div>
 
@@ -188,7 +191,7 @@ export default function NotificationsPage() {
                 onClick={markAllAsRead}
                 className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
               >
-                Mark all as read
+                {t('markAllRead')}
               </button>
             )}
           </div>

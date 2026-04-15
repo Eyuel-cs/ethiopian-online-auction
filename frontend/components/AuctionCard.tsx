@@ -46,7 +46,7 @@ export default function AuctionCard({ id, title, image, currentBid, timeLeft, bi
     <>
       <Link href={`/auction/${id}`}>
         <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden group border border-gray-100">
-          <div className="relative h-64 bg-gradient-to-br from-orange-300 to-orange-400 overflow-hidden">
+          <div className="relative h-48 sm:h-64 bg-gradient-to-br from-orange-300 to-orange-400 overflow-hidden">
             <Image
               src={image}
               alt={title}
@@ -69,15 +69,15 @@ export default function AuctionCard({ id, title, image, currentBid, timeLeft, bi
             <div className="absolute bottom-0 right-0 w-16 h-full bg-orange-500 rounded-l-3xl"></div>
           </div>
           
-          <div className="p-6">
-            <h3 className="font-bold text-xl mb-4 text-gray-900 line-clamp-1">
+          <div className="p-4 sm:p-6">
+            <h3 className="font-bold text-lg sm:text-xl mb-3 sm:mb-4 text-gray-900 line-clamp-1">
               {title}
             </h3>
             
             <div className="flex justify-between items-end mb-4">
               <div>
                 <p className="text-sm text-gray-500 mb-1">{t('currentBid')}</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">
                   {currentBid.toLocaleString()} <span className="text-lg">ETB</span>
                 </p>
               </div>

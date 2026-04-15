@@ -48,7 +48,8 @@ export default function Home() {
         setFeaturedAuctions(transformed);
       }
     } catch (error) {
-      console.error('Error fetching auctions:', error);
+      // Backend unreachable — show empty state, don't crash
+      setFeaturedAuctions([]);
     } finally {
       setLoading(false);
     }

@@ -56,15 +56,9 @@ class ApiClient {
 
       return data;
     } catch (error: any) {
-      console.error('API Error:', error);
-      
-      // Provide more helpful error messages
       if (error.message === 'Failed to fetch') {
-        throw new Error(
-          'Cannot connect to backend server. Please ensure the backend is running on http://localhost:5000'
-        );
+        throw new Error(`Cannot connect to server. Check that the backend is running.`);
       }
-      
       throw error;
     }
   }
@@ -240,9 +234,11 @@ class ApiClient {
 
   // Notification endpoints
   async getNotifications() {
-    return this.request('/notifications', {
-      method: 'GET',
-    });
+    try {
+      return await this.request('/notifications', { method: 'GET' });
+    } catch {
+      return { success: false, data: [] };
+    }
   }
 
   async markNotificationAsRead(notificationId: string) {
@@ -254,6 +250,18 @@ class ApiClient {
   async markAllNotificationsAsRead() {
     return this.request('/notifications/read-all', {
       method: 'PUT',
+    });
+  }
+
+  async deleteNotification(notificationId: string) {
+    return this.request(`/notifications/${notificationId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getUnreadNotificationCount() {
+    return this.request('/notifications/unread-count', {
+      method: 'GET',
     });
   }
 

@@ -20,10 +20,14 @@ export default function ChatAssistant() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load suggestions on mount
+  const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+  // Load suggestions only when chat opens for the first time
   useEffect(() => {
-    loadSuggestions();
-  }, []);
+    if (isOpen && suggestions.length === 0) {
+      loadSuggestions();
+    }
+  }, [isOpen]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -51,13 +55,19 @@ export default function ChatAssistant() {
 
   const loadSuggestions = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/assistant/suggestions');
+      const response = await fetch(`${BASE}/assistant/suggestions`);
       const data = await response.json();
       if (data.success) {
         setSuggestions(data.suggestions);
       }
-    } catch (error) {
-      console.error('Failed to load suggestions:', error);
+    } catch {
+      // Backend unavailable — use built-in fallback suggestions
+      setSuggestions([
+        'How do I place a bid?',
+        'How do I add funds to my wallet?',
+        'How do I become a seller?',
+        'What is escrow?'
+      ]);
     }
   };
 
@@ -77,7 +87,7 @@ export default function ChatAssistant() {
 
     try {
       // Send to backend
-      const response = await fetch('http://localhost:5000/api/assistant/message', {
+      const response = await fetch(`${BASE}/assistant/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
